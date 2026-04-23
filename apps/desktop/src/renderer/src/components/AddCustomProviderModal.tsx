@@ -1,7 +1,17 @@
 import { useT } from '@open-codesign/i18n';
 import { type WireApi, canonicalBaseUrl, detectWireFromBaseUrl } from '@open-codesign/shared';
 import { Button } from '@open-codesign/ui';
-import { AlertCircle, Check, CheckCircle, Loader2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 
 interface Props {
@@ -39,6 +49,7 @@ interface Props {
      *  placeholder so user knows there's a stored key, and an empty submit
      *  doesn't wipe it. */
     keyMask?: string;
+    httpHeaders?: Record<string, string>;
   };
 }
 
@@ -100,6 +111,13 @@ export function AddCustomProviderModal({
   const [test, setTest] = useState<TestState>({ kind: 'idle' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // --- HTTP headers key-value editor state ---
+  const initHeaders: Array<{ key: string; value: string }> = editTarget?.httpHeaders
+    ? Object.entries(editTarget.httpHeaders).map(([key, value]) => ({ key, value }))
+    : [];
+  const [headers, setHeaders] = useState(initHeaders);
+  const [showHeaders, setShowHeaders] = useState(initHeaders.length > 0);
 
   const [discovery, setDiscovery] = useState<DiscoveryState>({ kind: 'idle' });
   // When true, user explicitly chose to type a model name instead of picking from the dropdown.
@@ -191,11 +209,20 @@ export function AddCustomProviderModal({
     }
   }
 
+  function serializeHeaders(): Record<string, string> | undefined {
+    const filtered = headers.filter((h) => h.key.trim().length > 0);
+    if (filtered.length === 0) return undefined;
+    const out: Record<string, string> = {};
+    for (const h of filtered) out[h.key.trim()] = h.value;
+    return out;
+  }
+
   async function handleSave() {
     if (!window.codesign?.config) return;
     setSaving(true);
     setError(null);
     try {
+      const httpHeaders = serializeHeaders();
       if (isEdit && editTarget !== undefined) {
         // Edit mode: reuse id, rotate secret only when user typed something.
         // Omitting `apiKey` leaves the stored secret untouched — matching the
@@ -215,6 +242,8 @@ export function AddCustomProviderModal({
         }
         const typedKey = apiKey.trim();
         if (typedKey.length > 0) update.apiKey = typedKey;
+        // Always send httpHeaders so clearing all rows removes stored headers.
+        update.httpHeaders = httpHeaders ?? {};
         await window.codesign.config.updateProvider(update);
       } else {
         const slug = slugify(name);
@@ -227,6 +256,7 @@ export function AddCustomProviderModal({
           apiKey: apiKey.trim(),
           defaultModel: defaultModel.trim(),
           setAsActive: initialSetAsActive,
+          ...(httpHeaders !== undefined ? { httpHeaders } : {}),
         });
       }
       onSave();
@@ -353,6 +383,71 @@ export function AddCustomProviderModal({
             }
           />
         </Field>
+
+        {/* --- Collapsible HTTP headers editor --- */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowHeaders(!showHeaders)}
+            className="inline-flex items-center gap-1 text-[var(--text-xs)] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+          >
+            {showHeaders ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
+            {t('settings.providers.custom.httpHeaders')}
+          </button>
+          {showHeaders && (
+            <div className="mt-2 space-y-2">
+              <p className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                {t('settings.providers.custom.httpHeadersHint')}
+              </p>
+              {headers.map((h, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={h.key}
+                    onChange={(e) => {
+                      const next = [...headers];
+                      next[i] = { ...h, key: e.target.value };
+                      setHeaders(next);
+                    }}
+                    placeholder={t('settings.providers.custom.httpHeaderKey')}
+                    className="flex-1 h-7 px-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--text-xs)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                  />
+                  <input
+                    type="text"
+                    value={h.value}
+                    onChange={(e) => {
+                      const next = [...headers];
+                      next[i] = { ...h, value: e.target.value };
+                      setHeaders(next);
+                    }}
+                    placeholder={t('settings.providers.custom.httpHeaderValue')}
+                    className="flex-1 h-7 px-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--text-xs)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setHeaders(headers.filter((_, j) => j !== i))}
+                    className="p-1 rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-surface-hover)]"
+                    aria-label={t('settings.providers.custom.httpHeaderRemove')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setHeaders([...headers, { key: '', value: '' }])}
+                className="inline-flex items-center gap-1 text-[var(--text-xs)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              >
+                <Plus className="w-3 h-3" />
+                {t('settings.providers.custom.httpHeaderAdd')}
+              </button>
+            </div>
+          )}
+        </div>
 
         <Field
           label={t('settings.providers.custom.defaultModel')}

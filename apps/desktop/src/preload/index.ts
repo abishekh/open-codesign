@@ -71,6 +71,7 @@ export interface ProviderRow {
   defaultModel: string;
   hasKey: boolean;
   reasoningLevel?: ReasoningLevel;
+  httpHeaders?: Record<string, string>;
   error?: 'decryption_failed' | string;
 }
 

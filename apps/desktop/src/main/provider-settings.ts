@@ -29,6 +29,7 @@ export interface ProviderRow {
   defaultModel: string;
   hasKey: boolean;
   reasoningLevel?: ReasoningLevel;
+  httpHeaders?: Record<string, string>;
   error?: 'decryption_failed' | string;
 }
 
@@ -151,6 +152,7 @@ export function toProviderRows(
       // absent secret is a legitimate state, not a "missing key" warning.
       hasKey: ref !== undefined || isKeylessProviderAllowed(provider, entry),
       ...(entry?.reasoningLevel !== undefined ? { reasoningLevel: entry.reasoningLevel } : {}),
+      ...(entry?.httpHeaders !== undefined ? { httpHeaders: entry.httpHeaders } : {}),
       ...(rowError !== undefined ? { error: rowError } : {}),
     });
   }

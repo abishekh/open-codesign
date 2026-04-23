@@ -1661,6 +1661,9 @@ function ModelsTab() {
             builtin: editingRow.builtin,
             lockEndpoint: editingRow.builtin,
             ...(editingRow.maskedKey.length > 0 ? { keyMask: editingRow.maskedKey } : {}),
+            ...(editingRow.httpHeaders !== undefined
+              ? { httpHeaders: editingRow.httpHeaders }
+              : {}),
           }}
           initialSetAsActive={false}
         />
