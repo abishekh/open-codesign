@@ -321,8 +321,8 @@ export async function complete(
 
   // When a custom baseUrl is provided, override the model's built-in baseUrl.
   // pi-ai's completeSimple uses the model's baseUrl, not the options baseUrl,
-  // so gateways that proxy known models (e.g. AMD LLM Gateway proxying
-  // claude-sonnet-4-5) would otherwise route to the official API endpoint.
+  // so gateways that proxy known models would otherwise route to the official
+  // API endpoint instead of the custom one.
   if (opts.baseUrl !== undefined && piModel.baseUrl !== opts.baseUrl) {
     piModel = { ...piModel, baseUrl: opts.baseUrl };
   }
